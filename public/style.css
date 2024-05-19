@@ -2,3 +2,9 @@
     height:15px;
     width: 15px;
 }
+#colors {
+    opacity: 0;
+}
+#types{
+    opacity: 0;
+}

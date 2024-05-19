@@ -8,43 +8,53 @@ const collectionPgBtn = document.querySelector("#collectionPgBtn");
 const loginPgBtn = document.querySelector("#loginPgBtn");
 const signupPgBtn = document.querySelector("#signupPgBtn");
 const deckTesterPgBtn = document.querySelector("#deckTesterPgBtn");
-const colors = ["blue", "white", "red", "green", "black", "colorless"];
+const colors = ["colorless", "green", "red", "black", "blue", "white"];
+const scryfallUrl = "https://api.scryfall.com/";
 //Decks object where key will be deck name and value will be a deck object
-let decks = {};
-//Collection object where key is card img_uri and value will be count
-let collection = {};
-// Deck object where key is card img_uri and value is count of card
-let deck = {};
-//card object where key is card name and value = card img_uri
+let decks = {
+	//array of deck objects
+	decks: [],
+};
+//Collection object
+let collection = {
+	//array of card objects that have a count
+	cards: [],
+};
+// Deck object
+let deck = {
+	name: "DeckName",
+	//array of card objects.
+	cards: [],
+};
+// Card object will have a count key when in collection
 let card = {};
+let cardNames = []; //Array of card names
 // Holds the deck builder page context.
-let deckBuilderPg = `<div id="deck">
-<p>DeckName</p>
-<p>1x Card name</p>
-</div>
+
+let filters = `
+<button type="button" id="showFilters">Filters</button>
 <div id="cardFilters">
-<form id ="searchfilter">
 <label for ="search">Name/Ability</label>
 <input type="text" id ="search">
-<input type="submit">
-</form>
-<form id ="filters">
-<button for="color">Color</button>
+<button id="searchBtn" type="button">Search</button>
+<button type="button" id="colorsBtn">Color</button>
 <div id="colors">
-<label for ="u" ><img id="blue" class="cardSymbols" src=""></label>
-<input type ="checkbox" id ="u">
 <label for ="w" ><img id="white" class="cardSymbols" src=""></label>
-<input type ="checkbox" id ="w">
-<label for ="r" ><img id="red" class="cardSymbols" src=""></label>
-<input type ="checkbox" id ="r">
+<input type ="checkbox" name="color" id ="w">
 <label for ="g" ><img id="green" class="cardSymbols" src=""></label>
-<input type ="checkbox" id ="g">
+<input type ="checkbox" name="color" id ="g">
+<label for ="u" ><img id="blue" class="cardSymbols" src=""></label>
+<input type ="checkbox" name="color" id ="u">
+<label for ="colorless" ><img id="colorless" class="cardSymbols" src=""></label>
+<input type ="checkbox" name="color" id ="colorless">
+<label for ="r" ><img id="red" class="cardSymbols" src=""></label>
+<input type ="checkbox" name="color" id ="r">
 <label for ="b" ><img id="black" class="cardSymbols" src=""></label>
 <input type ="checkbox" id ="b">
-<label for ="b" ><img id="colorless" class="cardSymbols" src=""></label>
-<input type ="checkbox" id ="colorless">
+<label for ="exclusive" >Exclusive</label>
+<input type ="checkbox" name="color" id ="exclusive">
 </div>
-<button id="types">Types</button>
+<button type="button" id="typesBtn">Types</button>
 <div id="types">
 <label for ="instant">Instant<label>
 <input type ="checkbox" id ="instant">
@@ -67,11 +77,18 @@ let deckBuilderPg = `<div id="deck">
 <input type ="number" id ="power" name="power" min=0 max=20>
 <label for ="toughness">Toughness</label>
 <input type ="number" id ="toughness" name="toughness" min=0 max=20>
-<input type= "submit">
-</form>
+<button type= "button" id="filterBtn">Filter</button>
 </div>
-<div id ="cards">
+<div id="cards">
+
 </div>`;
+let deckBuilderPg =
+	`<div id="deck">
+<label for ="deckName">DeckName</label>
+<input type ="text" id="deckName"/>
+<p>1x Card name</p>
+<button type="button" id="saveDeck">Save</button>
+</div>` + filters;
 function setHome() {
 	main.innerHTML = `<p>Here I have made a personal Magic the gathering deck building/testing website.
         This site is meant for anyone to try new decks or post decks that you make.
@@ -81,8 +98,8 @@ function setHome() {
 setHome();
 async function setDeckBuilderPage() {
 	main.innerHTML = deckBuilderPg;
-	let symbolsList = await fetch("https://api.scryfall.com/symbology").then(
-		(res) => res.json()
+	let symbolsList = await fetch(scryfallUrl + "symbology").then((res) =>
+		res.json()
 	);
 
 	for (let i = 0; i < 6; i++) {
@@ -90,8 +107,85 @@ async function setDeckBuilderPage() {
 		document.querySelector("#" + colors[i]).src =
 			symbolsList.data[value].svg_uri;
 	}
-}
 
+	document.querySelector("#colorsBtn").onclick = function () {
+		let colorsDiv = document.querySelector("#colors");
+
+		if (colorsDiv.style.opacity == 0) {
+			colorsDiv.style.opacity = 10;
+		} else if (colorsDiv.style.opacity == 10) {
+			colorsDiv.style.opacity = 0;
+		}
+	};
+	document.querySelector("#typesBtn").onclick = function () {
+		let typesDiv = document.querySelector("#types");
+		if (typesDiv.style.opacity == 0) {
+			typesDiv.style.opacity = 10;
+		} else if (typesDiv.style.opacity == 10) {
+			typesDiv.style.opacity = 0;
+		}
+	};
+	let searchBtn = document.querySelector("#searchBtn");
+	searchBtn.onclick = getCardByName;
+	let filterBtn = document.querySelector("#filterBtn");
+	filterBtn.onclick = filterCards;
+	async function filterCards() {
+		let searchUrl = "cards/search?q=c%3Dr+mv%3D1";
+		let response = await fetch(scryfallUrl + searchUrl);
+		let data = await response.json();
+		let cards = data.data;
+		console.log(data);
+		console.log(cards);
+		let cardsDiv = document.querySelector("#cards");
+		let pages = data.total_cards/25;
+		let page = 1;
+		for (let i = 0; i < pages - 1; i++) {
+			for (let j = 0; j < 25; j++) {
+				if(i==0&&j==0){
+					cardsDiv.innerHTML = ``;
+				}
+				if (page > 1) {
+					let track = 25 * page + j;
+					cardsDiv.innerHTML += `<img class="cardSearch"src="${cards[track].image_uris.small}"/>`;
+				} else if (i == 0) {
+					cardsDiv.innerHTML += `<img class="cardSearch"src="${cards[j].image_uris.small}"/>`;
+				}
+			}
+			cardsDiv.innerHTML += `<button type="button" id="page${i + 1}">${
+				i + 1
+			}</button>`;
+		}
+	};
+}
+async function getCardByName() {
+	let name = document.querySelector("#search").value;
+	card = {
+		"name": "",
+		"img_uri": "",
+		"count": 0
+
+	};
+	for (let i = 0; i < cardNames.length; i++) {
+		let cardName = cardNames[i].slice(0, name.length);
+		if (name.toLocaleLowerCase() === cardName.toLocaleLowerCase()) {
+			let response = await fetch(scryfallUrl + "cards/named?fuzzy=" + name);
+			let data = await response.json();
+			card.name = data.name;
+			card.img_uri = data.image_uris.small;
+		}
+	}
+	let imgTag = `<img id ="${card.name}"src="${card.img_uri}" onclick="addToDeck()">`;
+	
+	let cardsDiv = document.querySelector("#cards");
+	cardsDiv.innerHTML = imgTag;
+	document.querySelector("#search").value = "";
+}
+async function getCardNames() {
+	const response = await fetch(scryfallUrl + "catalog/card-names");
+	const data = await response.json();
+	cardNames = data.data;
+}
+getCardNames();
 async function setCollectionPage() {}
 function setLoginPage() {
 	main.innerHTML = `<div id="loginFormDiv">
@@ -103,32 +197,34 @@ function setLoginPage() {
     <button type="submit">Login</button>
     </form>
     </div>`;
-	const loginForm = document.getElementById("loginForm");
-	loginForm.addEventListener("submit", async (event) => {
-		event.preventDefault(); // Prevent the default form submission
-		const username = loginForm.username.value;
-		const password = loginForm.password.value;
-		const user = {
-			username: username,
-			password: password,
-		};
-		console.log(user);
-		try {
-			const response = await fetch("/login", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(user),
-			});
-		} catch (error) {
-			console.error("Error:", error);
-		}
-	});
+	document
+		.getElementById("loginForm")
+		.addEventListener("submit", async (event) => {
+			event.preventDefault(); // Prevent the default form submission
+			const username = loginForm.username.value;
+			const password = loginForm.password.value;
+			const user = {
+				username: username,
+				password: password,
+			};
+			console.log(user);
+			try {
+				const response = await fetch("/login", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(user),
+				});
+			} catch (error) {
+				console.error("Error:", error);
+			}
+		});
 }
 async function getRandomCard() {
 	try {
-		const response = await fetch("https://api.scryfall.com/cards/random");
+		let url = scryfallUrl + "cards/random";
+		const response = await fetch(url);
 		const data = await response.json();
 		console.log(data); // Access data.name directly
 		return data; // Return the data for further processing
@@ -150,31 +246,31 @@ function setSignupPage() {
     <button type="submit">Signup</button>
     </form>
     </div>`;
-	const signupForm = document.getElementById("signupForm");
-	signupForm.addEventListener("submit", async (event) => {
-		event.preventDefault(); // Prevent the default form submission
-
-		const username = signupForm.username.value;
-		const password = signupForm.password.value;
-		const email = signupForm.email.value;
-		const user = {
-			username: username,
-			password: password,
-			email: email,
-		};
-		console.log(user);
-		try {
-			const response = await fetch("/signup", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(user),
-			});
-		} catch (error) {
-			console.error("Error:", error);
-		}
-	});
+	document
+		.getElementById("signupForm")
+		.addEventListener("submit", async (event) => {
+			event.preventDefault(); // Prevent the default form submission
+			const username = signupForm.username.value;
+			const password = signupForm.password.value;
+			const email = signupForm.email.value;
+			const user = {
+				username: username,
+				password: password,
+				email: email,
+			};
+			console.log(user);
+			try {
+				const response = await fetch("/signup", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(user),
+				});
+			} catch (error) {
+				console.error("Error:", error);
+			}
+		});
 }
 async function setDeckTesterPage() {
 	main.innerHTML = `<div id="deckSelection"></div>
@@ -185,19 +281,59 @@ async function setDeckTesterPage() {
     <div id="field"></div>
     <div id="life"></div>`;
 }
-async function addToCollection(card) {}
-async function removeFromCollection(card) {}
-async function filterCards() {}
-function addToDeck(card) {
-	const newCard = {
-		name: card,
-	};
+function addToCollection(card) {
+	for (let i = 0; i < collection.cards.length; i++) {
+		if ((collection.cards[i].name = card.name)) {
+			collection.cards[i].count += 1;
+		} else if ((i = collection.cards.length - 1)) {
+			collection.cards.push(card);
+		}
+	}
 }
-async function removeFromDeck(card) {}
-function setViewDeckPage() {}
-function functionShuffleDeck(deck) {}
+async function removeFromCollection(card) {
+	for (let i = 0; i < collection.cards.length; i++) {
+		if ((collection.cards[i].name = card.name)) {
+			collection.cards[i].count -= 1;
+		} else if ((i = collection.cards.length - 1)) {
+			collection.cards.push(card);
+		}
+	}
+}
+async function filterCards(filters) {
+	let checkboxes = document.querySelectorAll('input[name="color"]:checked');
+}
+function addToDeck() {
+	deck.cards.push(card);
+	console.log(deck.cards);
+}
+function removeFromDeck(card) {
+	let cardName = card.name;
+	for (let i = 0; i < deck.cards.length; i++) {
+		if (deck.cards[i].name == cardName) {
+			deck.cards[i] = deck.cards[deck.cards.length - 1];
+			deck.cards.pop();
+			return deck;
+		}
+	}
+}
+function shuffleDeck() {
+	let index = deck.cards.length,
+		randomIndex;
 
-async function searchCard() {}
+	// While there remain elements to shuffle.
+	while (index != 0) {
+		// Pick a remaining element.
+		randomIndex = Math.floor(Math.random() * index);
+		index--;
+
+		// And swap it with the current element.
+		[deck.cards[index], deck.cards[randomIndex]] = [
+			deck.cards[randomIndex],
+			deck.cards[index],
+		];
+	}
+}
+
 indexBtn.onclick = setHome;
 deckBuilderPgBtn.onclick = setDeckBuilderPage;
 collectionPgBtn.onclick = setCollectionPage;
