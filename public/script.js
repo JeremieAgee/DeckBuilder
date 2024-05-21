@@ -4,28 +4,18 @@ let main = document.querySelector("main");
 // Constants for button elements
 const indexBtn = document.querySelector("#homePgBtn");
 const deckBuilderPgBtn = document.querySelector("#deckBuilderPgBtn");
-const deckSearchPgBtn = document.querySelector("#deckSearchPgBtn");
 const collectionPgBtn = document.querySelector("#collectionPgBtn");
-const loginPgBtn = document.querySelector("#loginPgBtn");
-const signupPgBtn = document.querySelector("#signupPgBtn");
 const deckTesterPgBtn = document.querySelector("#deckTesterPgBtn");
 
 // Constants for colors and card types
 const colors = ["c", "g", "r", "b", "u", "w"];
 const formats = ["standard", "modern", "pauper", "legacy", "commander"];
-const cardTypes = [
-	"instant",
-	"sorcery",
-	"enchantment",
-	"creature",
-	"land",
-	"artifact",
-];
+const cardTypes = ["instant", "sorcery", "enchantment", "creature", "land", "artifact"];
 const scryfallUrl = "https://api.scryfall.com/";
 
 // Global objects for decks and collection
-let decks = []; // Array of deck objects
-let collection = []; // Array of card objects with a count
+let decks = [];
+let collection = [];
 let deck = { name: "DeckName", deckCards: [] };
 let currentSearchCards = [];
 let allSearchCards = [];
@@ -33,6 +23,20 @@ let cardNames = [];
 let page = 1;
 let pages = 1;
 
+// Set the initial home page content
+function setHome() {
+  main.innerHTML = `<center>
+    <img id="homeImg" src="./imgs/starryai_yvnvs.png"/>
+    </center>
+    <p>Welcome to the Magic the Gathering deck building/testing website.
+    This site allows you to build and test decks, save and post your creations.
+    Sign up to save decks, post decks, or use the Collection page. Have fun!</p>
+  `;
+  console.log("Home page set");
+}
+
+// Initial call to set the home page
+setHome();
 // Deck builder page context
 const filters = `
   <button type="button" id="showFilters">Filters</button>
@@ -102,24 +106,11 @@ const deckBuilderPg = `
   ${filters}
 `;
 
-// Set the initial home page content
-function setHome() {
-	main.innerHTML = `
-    <p>Welcome to the Magic the Gathering deck building/testing website.
-    This site allows you to build and test decks, save and post your creations.
-    Sign up to save decks, post decks, or use the Collection page. Have fun!</p>
-  `;
-	console.log("Home page set");
-}
-
-// Initial call to set the home page
-setHome();
-
 // Set the deck builder page content
 async function setDeckBuilderPage() {
 	main.innerHTML = deckBuilderPg;
 	console.log("Deck builder page set");
-
+	
 	// Fetch and display mana symbols
 	let symbolsList = await fetch(scryfallUrl + "symbology").then((res) =>
 		res.json()
@@ -150,6 +141,7 @@ async function setDeckBuilderPage() {
 	});
 
 	// Set up search and filter buttons
+	document.querySelector("#saveDeck").addEventListener("click", saveDeck);
 	document.querySelector("#searchBtn").addEventListener("click", getCardByName);
 	document.querySelector("#filterBtn").addEventListener("click", filterCards);
 }
@@ -177,6 +169,7 @@ async function getCardByName() {
 	img.addEventListener("dblclick", () => {
 		addToDeck(card);
 	});
+	
 	document.querySelector("#search").value = "";
 }
 
@@ -187,12 +180,6 @@ async function getCardNames() {
 	cardNames = data.data;
 }
 getCardNames();
-
-// Set the collection page content
-async function setCollectionPage() {
-	console.log("Collection page set");
-	// Implementation for setting the collection page
-}
 
 // Get a random card
 async function getRandomCard() {
@@ -219,24 +206,97 @@ async function setDeckTesterPage() {
 	console.log("Deck tester page set");
 }
 
+// Set the collection page content
+async function setCollectionPage() {
+  main.innerHTML = `
+    <div id="collectionPage">
+      <button type="button" id="toggleCollectionBtn">Show/Hide Collection</button>
+      <div id="collection" style="display: none;"></div>
+      ${filters}
+    </div>
+  `;
+  console.log("Collection page set");
+
+  // Fetch and display mana symbols
+  let symbolsList = await fetch(scryfallUrl + "symbology").then((res) =>
+    res.json()
+  );
+  for (let i = 0; i < colors.length; i++) {
+    document.querySelector(`#${colors[i]}`).src =
+      symbolsList.data[73 - i].svg_uri;
+  }
+
+  // Toggle visibility of filters
+  document.querySelector("#showFilters").addEventListener("click", () => {
+    let filtersDiv = document.querySelector("#cardFilters");
+    filtersDiv.style.opacity = filtersDiv.style.opacity == 0 ? 1 : 0;
+  });
+  document.querySelector("#colorsBtn").addEventListener("click", () => {
+    let colorsDiv = document.querySelector("#colors");
+    colorsDiv.style.opacity = colorsDiv.style.opacity == 0 ? 1 : 0;
+  });
+
+  document.querySelector("#typesBtn").addEventListener("click", () => {
+    let typesDiv = document.querySelector("#types");
+    typesDiv.style.opacity = typesDiv.style.opacity == 0 ? 1 : 0;
+  });
+
+  document.querySelector("#formatsBtn").addEventListener("click", () => {
+    let formatsDiv = document.querySelector("#format");
+    formatsDiv.style.opacity = formatsDiv.style.opacity == 0 ? 1 : 0;
+  });
+
+  // Set up search and filter buttons
+  document.querySelector("#searchBtn").addEventListener("click", getCardByName);
+  document.querySelector("#filterBtn").addEventListener("click", filterCards);
+
+  // Toggle visibility of collection
+  document.querySelector("#toggleCollectionBtn").addEventListener("click", () => {
+    let collectionDiv = document.querySelector("#collection");
+    collectionDiv.style.display = collectionDiv.style.display == "none" ? "block" : "none";
+    if (collectionDiv.style.display == "block") {
+      displayCollection();
+    }
+  });
+}
+
+// Function to display the collection
+function displayCollection() {
+  let collectionDiv = document.querySelector("#collection");
+  collectionDiv.innerHTML = "";
+  collection.forEach((card) => {
+    let cardDiv = document.createElement("div");
+    cardDiv.className = "cardInCollection";
+    cardDiv.innerHTML = `
+      <img src="${card.image_uris.small}" alt="${card.name}">
+      <p>${card.name} (${card.count})</p>
+    `;
+    collectionDiv.appendChild(cardDiv);
+  });
+}
+
 // Add a card to the collection
 function addToCollection(card) {
-	let existingCard = collection.find((c) => c.name === card.name);
-	if (existingCard) {
-		existingCard.count++;
-	} else {
-		collection.push({ ...card, count: 1 });
-	}
+  let existingCard = collection.find((c) => c.name === card.name);
+  if (existingCard) {
+    existingCard.count++;
+  } else {
+    collection.push({ ...card, count: 1 });
+  }
+  displayCollection();
 }
 
 // Remove a card from the collection
 function removeFromCollection(card) {
-	let existingCard = collection.find((c) => c.name === card.name);
-	if (existingCard && existingCard.count > 0) {
-		existingCard.count--;
-	}
+  let existingCard = collection.find((c) => c.name === card.name);
+  if (existingCard && existingCard.count > 0) {
+    existingCard.count--;
+    if (existingCard.count === 0) {
+      collection = collection.filter((c) => c.name !== card.name);
+    }
+  }
+  displayCollection();
 }
-
 // Function to add a card to the deck
 function addToDeck(card) {
 	// Count the occurrences of the card in the deck
@@ -420,7 +480,7 @@ function setPageBtns() {
 }
 
 // Shuffle the deck
-function shuffleDeck() {
+function shuffleDeck(deck) {
 	for (let i = deck.deckCards.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
 		[deck.deckCards[i], deck.deckCards[j]] = [
@@ -428,6 +488,32 @@ function shuffleDeck() {
 			deck.deckCards[i],
 		];
 	}
+	return deck;
+}
+// Save the current deck
+function saveDeck() {
+    let deckName = document.querySelector("#deckName").value.trim();
+    if (!deckName) {
+      alert("Please enter a deck name.");
+      return;
+    }
+
+    let newDeck = {
+      name: deckName,
+      cards: deck.deckCards
+    };
+
+    decks.push(newDeck);
+    deck = { name: "", deckCards: [] };
+    displayDeck();
+    console.log("Deck saved:", newDeck);
+	localStorage.setItem("decksJson", decks);
+  }
+
+function getDecks(){
+	let storedDecks = JSON.parse(localStorage.getItem("decksJSON"));
+	decks = storedDecks;
+	deck = storedDecks[0];
 }
 
 // Set event listeners for navigation buttons
@@ -435,8 +521,6 @@ indexBtn.addEventListener("click", setHome);
 deckBuilderPgBtn.addEventListener("click", setDeckBuilderPage);
 
 collectionPgBtn.addEventListener("click", setCollectionPage);
-loginPgBtn.addEventListener("click", setLoginPage);
-signupPgBtn.addEventListener("click", setSignupPage);
 deckTesterPgBtn.addEventListener("click", setDeckTesterPage);
 
 console.log("Event listeners set for all navigation buttons");

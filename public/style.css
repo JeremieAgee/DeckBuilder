@@ -6,6 +6,10 @@
     opacity: 0;
 }
 
+#homeImg{
+    height: 150px;
+    align-self: center;
+}
 #headerImg{
     height: 100px;
     width: 100%;
