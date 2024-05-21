@@ -2,9 +2,30 @@
     height:15px;
     width: 15px;
 }
-#colors {
+#colors, #types, #cardFilters, #format{
     opacity: 0;
 }
-#types{
-    opacity: 0;
+
+#headerImg{
+    height: 100px;
+    width: 100%;
+    object-fit: contain;
+}
+body{
+    height: 100%;
+}
+header{
+    padding: 1px;
+    margin-left: 1px;
+}
+li{
+    padding-left: 0px;
+    margin-left: 1px;
+    display: inline;
+}
+main{
+    height: 100%;
+}
+footer{
+    font-size: xx-small;
 }
